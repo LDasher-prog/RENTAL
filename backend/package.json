@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --experimental-specifier-resolution=node --watch src/server.ts",
-    "start": "node --experimental-specifier-resolution=node src/server.ts"
+    "build": "tsc",
+    "dev": "npm run build -- --watch",
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
