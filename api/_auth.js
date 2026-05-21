@@ -1,0 +1,40 @@
+const crypto = require('crypto')
+
+const demoUser = {
+  id: 'user-1',
+  name: 'Amina Juma',
+  email: 'amina@smartrentals.com',
+  role: 'landlord',
+}
+
+const demoPassword = 'password123'
+const roles = new Set(['landlord', 'caretaker', 'tenant'])
+
+const base64Url = (value) => Buffer.from(JSON.stringify(value)).toString('base64url')
+
+const createToken = (user) => {
+  const header = base64Url({ alg: 'HS256', typ: 'JWT' })
+  const payload = base64Url({
+    email: user.email,
+    role: user.role,
+    exp: Math.floor(Date.now() / 1000) + 8 * 60 * 60,
+  })
+  const secret = process.env.JWT_SECRET || 'smart-rentals-secret'
+  const signature = crypto.createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64url')
+
+  return `${header}.${payload}.${signature}`
+}
+
+const sendJson = (res, status, data) => {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify(data))
+}
+
+module.exports = {
+  createToken,
+  demoPassword,
+  demoUser,
+  roles,
+  sendJson,
+}
