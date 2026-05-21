@@ -1,4 +1,5 @@
 const { createToken, roles, sendJson } = require('../_auth')
+const { createUser, findUserByEmail, initializeDatabase } = require('../_db')
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -15,15 +16,27 @@ module.exports = async (req, res) => {
     return sendJson(res, 400, { message: 'Role must be landlord, caretaker, or tenant' })
   }
 
-  const user = {
-    id: `user-${Date.now()}`,
-    name,
-    email: String(email).toLowerCase(),
-    role,
+  await initializeDatabase()
+
+  const normalizedEmail = String(email).toLowerCase()
+  if (await findUserByEmail(normalizedEmail)) {
+    return sendJson(res, 409, { message: 'An account with this email already exists' })
   }
+
+  const user = await createUser({
+    name,
+    email: normalizedEmail,
+    password,
+    role,
+  })
 
   return sendJson(res, 201, {
     token: createToken(user),
-    user,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
   })
 }
