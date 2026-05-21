@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppRoutes } from './routes/AppRoutes'
+import { InstallAppButton } from './components/ui/InstallAppButton'
 import { NetworkStatus } from './components/ui/NetworkStatus'
 import { useAuth } from './hooks/useAuth'
 
@@ -20,6 +21,7 @@ function App() {
           <AppRoutes />
         </motion.div>
       </AnimatePresence>
+      <InstallAppButton />
       <NetworkStatus />
     </div>
   )
