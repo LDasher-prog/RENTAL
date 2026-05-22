@@ -1,24 +1,28 @@
 const { createToken, sendJson } = require('../_auth')
 const { findUserByEmail, findUserByGoogleId, createUserWithGoogle, updateGoogleUser, initializeDatabase } = require('../_db')
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID
 
 const verifyGoogleToken = async (idToken) => {
   if (!idToken) {
     return null
   }
 
-  const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`)
-  if (!response.ok) {
+  try {
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`)
+    if (!response.ok) {
+      return null
+    }
+
+    const payload = await response.json()
+    if (payload.aud !== GOOGLE_CLIENT_ID || !payload.email_verified) {
+      return null
+    }
+
+    return payload
+  } catch (error) {
     return null
   }
-
-  const payload = await response.json()
-  if (payload.aud !== GOOGLE_CLIENT_ID || !payload.email_verified) {
-    return null
-  }
-
-  return payload
 }
 
 module.exports = async (req, res) => {
