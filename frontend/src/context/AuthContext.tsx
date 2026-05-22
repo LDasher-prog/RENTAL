@@ -4,7 +4,6 @@ import { authService } from '../services/authService'
 import type { UserProfile } from '../types'
 import { clearStoredAuth, readStoredAuth, writeStoredAuth } from '../services/authStorage'
 import { AuthContext } from './authContextValue'
-import type { RegisterPayload } from './authContextValue'
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [storedAuth] = useState(() => readStoredAuth())
@@ -23,14 +22,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const login = useCallback(async (email: string, password: string, remember = true) => {
-    const response = await authService.login(email, password)
+  const loginWithGoogle = useCallback(async (idToken: string, remember = true) => {
+    const response = await authService.loginWithGoogle(idToken)
     persist(response.user, response.token, remember)
-  }, [persist])
-
-  const register = useCallback(async (profile: RegisterPayload) => {
-    const response = await authService.register(profile)
-    persist(response.user, response.token)
   }, [persist])
 
   const logout = useCallback(async () => {
@@ -41,8 +35,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const value = useMemo(
-    () => ({ user, token, initialized, login, register, logout }),
-    [user, token, initialized, login, register, logout],
+    () => ({ user, token, initialized, loginWithGoogle, logout }),
+    [user, token, initialized, loginWithGoogle, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

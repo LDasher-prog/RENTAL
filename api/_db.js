@@ -20,7 +20,11 @@ const schema = `
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     role TEXT NOT NULL CHECK (role IN ('landlord', 'caretaker', 'tenant')),
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
+    google_id TEXT UNIQUE,
+    avatar TEXT,
+    totp_secret TEXT,
+    two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
@@ -53,8 +57,17 @@ const initializeDatabase = () => {
 
 const findUserByEmail = async (email) => {
   const result = await pool.query(
-    'SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1',
+    'SELECT id, name, email, role, password_hash, google_id, avatar, totp_secret, two_factor_enabled FROM users WHERE email = $1 LIMIT 1',
     [String(email).toLowerCase()],
+  )
+
+  return result.rows[0] || null
+}
+
+const findUserByGoogleId = async (googleId) => {
+  const result = await pool.query(
+    'SELECT id, name, email, role, password_hash, google_id, avatar, totp_secret, two_factor_enabled FROM users WHERE google_id = $1 LIMIT 1',
+    [googleId],
   )
 
   return result.rows[0] || null
@@ -66,9 +79,36 @@ const createUser = async ({ name, email, password, role }) => {
     `
       INSERT INTO users (id, name, email, role, password_hash)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, email, role, password_hash;
+      RETURNING id, name, email, role, password_hash, two_factor_enabled;
     `,
     [`user-${Date.now()}`, name, String(email).toLowerCase(), role, passwordHash],
+  )
+
+  return result.rows[0]
+}
+
+const createUserWithGoogle = async ({ googleId, email, name, avatar, role = 'tenant' }) => {
+  const result = await pool.query(
+    `
+      INSERT INTO users (id, name, email, role, google_id, avatar)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, name, email, role, google_id, avatar, two_factor_enabled;
+    `,
+    [`user-${Date.now()}`, name, String(email).toLowerCase(), role, googleId, avatar],
+  )
+
+  return result.rows[0]
+}
+
+const updateGoogleUser = async ({ googleId, email, name, avatar }) => {
+  const result = await pool.query(
+    `
+      UPDATE users
+      SET name = $1, avatar = $2, google_id = $3
+      WHERE email = $4
+      RETURNING id, name, email, role, google_id, avatar, two_factor_enabled;
+    `,
+    [name, avatar, googleId, String(email).toLowerCase()],
   )
 
   return result.rows[0]
@@ -103,9 +143,24 @@ const updateUserPassword = async (email, password) => {
   await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [passwordHash, String(email).toLowerCase()])
 }
 
+const setTwoFactorSecret = async (email, secret) => {
+  await pool.query('UPDATE users SET totp_secret = $1 WHERE email = $2', [secret, String(email).toLowerCase()])
+}
+
+const enableTwoFactor = async (email) => {
+  await pool.query('UPDATE users SET two_factor_enabled = true WHERE email = $1', [String(email).toLowerCase()])
+}
+
+const disableTwoFactor = async (email) => {
+  await pool.query('UPDATE users SET two_factor_enabled = false, totp_secret = NULL WHERE email = $1', [String(email).toLowerCase()])
+}
+
 module.exports = {
   createUser,
+  createUserWithGoogle,
   findUserByEmail,
+  findUserByGoogleId,
+  updateGoogleUser,
   initializeDatabase,
   pool,
   savePasswordResetToken,

@@ -20,6 +20,8 @@
   "homepage": "https://github.com/LDasher-prog/RENTAL#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "pg": "^8.21.0"
+    "otplib": "^13.4.0",
+    "pg": "^8.21.0",
+    "qrcode": "^1.5.4"
   }
 }

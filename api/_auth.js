@@ -36,10 +36,38 @@ const sendJson = (res, status, data) => {
   res.end(JSON.stringify(data))
 }
 
+const verifyToken = (token) => {
+  if (!token) {
+    return null
+  }
+
+  const [header, payload, signature] = String(token).split('.')
+  if (!header || !payload || !signature) {
+    return null
+  }
+
+  const secret = process.env.JWT_SECRET || 'smart-rentals-secret'
+  const expected = crypto.createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64url')
+  if (signature !== expected) {
+    return null
+  }
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+    if (data.exp && Number(data.exp) < Math.floor(Date.now() / 1000)) {
+      return null
+    }
+    return data
+  } catch {
+    return null
+  }
+}
+
 module.exports = {
   createToken,
   demoPassword,
   demoUser,
   roles,
   sendJson,
+  verifyToken,
 }
