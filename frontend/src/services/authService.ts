@@ -33,7 +33,21 @@ export const authService = {
       throw new Error(getAuthErrorMessage(error), { cause: error })
     }
   },
+  forgotPassword: async (email: string) => {
+    try {
+      await api.post('/auth/forgot-password', { email })
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error), { cause: error })
+    }
+  },
+  resetPassword: async (token: string, password: string) => {
+    try {
+      await api.post('/auth/reset-password', { token, password })
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error), { cause: error })
+    }
+  },
   logout: async () => {
-    return true
+    return Promise.resolve()
   },
 }

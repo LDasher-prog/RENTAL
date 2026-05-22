@@ -1,6 +1,6 @@
-const { createToken, sendJson } = require('../_auth')
-const bcrypt = require('bcryptjs')
-const { findUserByEmail, initializeDatabase } = require('../_db')
+const crypto = require('crypto')
+const { sendJson } = require('../_auth')
+const { findUserByEmail, initializeDatabase, savePasswordResetToken } = require('../_db')
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
@@ -17,28 +17,21 @@ module.exports = async (req, res) => {
     return sendJson(res, 405, { message: 'Method not allowed' })
   }
 
-  const { email, password } = req.body || {}
-
-  if (!email || !password) {
-    return sendJson(res, 400, { message: 'Email and password are required' })
+  const { email } = req.body || {}
+  if (!email) {
+    return sendJson(res, 400, { message: 'Email is required' })
   }
 
   await initializeDatabase()
 
   const user = await findUserByEmail(email)
-  const validPassword = user ? await bcrypt.compare(password, user.password_hash) : false
-
-  if (!user || !validPassword) {
-    return sendJson(res, 401, { message: 'Invalid email or password' })
+  if (user) {
+    const token = crypto.randomBytes(24).toString('hex')
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    await savePasswordResetToken({ token, email: user.email, expiresAt })
   }
 
   return sendJson(res, 200, {
-    token: createToken(user),
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
+    message: 'If the email exists, a password reset link has been sent.',
   })
 }

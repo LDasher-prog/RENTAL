@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { authService } from '../../services/authService'
 
 const forgotSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -11,6 +13,7 @@ const forgotSchema = z.object({
 type ForgotForm = z.infer<typeof forgotSchema>
 
 export const ForgotPasswordPage = () => {
+  const [successMessage, setSuccessMessage] = useState('')
   const {
     register,
     handleSubmit,
@@ -27,7 +30,18 @@ export const ForgotPasswordPage = () => {
       })
       return
     }
-    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    setSuccessMessage('')
+
+    try {
+      await authService.forgotPassword(values.email)
+      setSuccessMessage('If that email exists, a reset link has been sent.')
+    } catch (error) {
+      setError('root', {
+        type: 'server',
+        message: error instanceof Error ? error.message : 'Unable to send reset instructions',
+      })
+    }
   }
 
   return (
@@ -44,6 +58,8 @@ export const ForgotPasswordPage = () => {
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? 'Sending link...' : 'Send reset link'}
           </Button>
+          {successMessage && <p className="text-sm text-emerald-400">{successMessage}</p>}
+          {errors.root?.message && <p className="text-sm text-rose-400">{errors.root.message}</p>}
         </form>
       </div>
 

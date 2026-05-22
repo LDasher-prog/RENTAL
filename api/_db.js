@@ -23,6 +23,12 @@ const schema = `
     password_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+  );
 `
 
 let initialized
@@ -68,9 +74,42 @@ const createUser = async ({ name, email, password, role }) => {
   return result.rows[0]
 }
 
+const savePasswordResetToken = async ({ token, email, expiresAt }) => {
+  await pool.query(
+    `
+      INSERT INTO password_resets (token, email, expires_at)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (token) DO UPDATE SET email = EXCLUDED.email, expires_at = EXCLUDED.expires_at;
+    `,
+    [token, String(email).toLowerCase(), expiresAt],
+  )
+}
+
+const findPasswordResetToken = async (token) => {
+  const result = await pool.query(
+    'SELECT token, email, expires_at FROM password_resets WHERE token = $1 LIMIT 1',
+    [token],
+  )
+
+  return result.rows[0] || null
+}
+
+const deletePasswordResetToken = async (token) => {
+  await pool.query('DELETE FROM password_resets WHERE token = $1', [token])
+}
+
+const updateUserPassword = async (email, password) => {
+  const passwordHash = await bcrypt.hash(password, 10)
+  await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [passwordHash, String(email).toLowerCase()])
+}
+
 module.exports = {
   createUser,
   findUserByEmail,
   initializeDatabase,
   pool,
+  savePasswordResetToken,
+  findPasswordResetToken,
+  deletePasswordResetToken,
+  updateUserPassword,
 }

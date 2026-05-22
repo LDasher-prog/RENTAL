@@ -28,6 +28,11 @@ const createToken = (user) => {
 const sendJson = (res, status, data) => {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type')
+  res.setHeader('Vary', 'Origin')
   res.end(JSON.stringify(data))
 }
 

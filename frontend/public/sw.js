@@ -27,36 +27,55 @@ self.addEventListener('activate', (event) => {
 
 const isApiRequest = (url) => url.pathname.startsWith('/api/')
 
+const shouldOmitCredentials = (request) => {
+  try {
+    const pathname = new URL(request.url).pathname
+    return pathname === '/manifest.webmanifest' || APP_SHELL.includes(pathname)
+  } catch {
+    return false
+  }
+}
+
+const doFetch = (request) => (shouldOmitCredentials(request) ? fetch(request, { credentials: 'omit' }) : fetch(request))
+
 const offlineApiResponse = () =>
   new Response(JSON.stringify({ message: 'You are offline. Please reconnect and try again.' }), {
     status: 503,
     headers: { 'Content-Type': 'application/json' },
   })
 
+const offlinePageResponse = () =>
+  new Response('<h1>Offline</h1><p>Please reconnect and try again.</p>', {
+    status: 503,
+    headers: { 'Content-Type': 'text/html' },
+  })
+
 const networkFirstNavigation = async (request) => {
   try {
-    const response = await fetch(request)
+    const response = await doFetch(request)
     const cache = await caches.open(CACHE_VERSION)
     cache.put('/index.html', response.clone())
     return response
   } catch {
-    return caches.match('/index.html')
+    const cached = await caches.match('/index.html')
+    return cached || offlinePageResponse()
   }
 }
 
 const staleWhileRevalidate = async (request) => {
   const cache = await caches.open(CACHE_VERSION)
   const cached = await cache.match(request)
-  const fetched = fetch(request)
+  const fetched = doFetch(request)
     .then((response) => {
-      if (response.ok) {
+      if (response && response.ok) {
         cache.put(request, response.clone())
       }
       return response
     })
     .catch(() => cached)
 
-  return cached || fetched
+  const result = (await fetched) || cached || offlinePageResponse()
+  return result
 }
 
 self.addEventListener('fetch', (event) => {

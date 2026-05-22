@@ -2,6 +2,16 @@ const { createToken, roles, sendJson } = require('../_auth')
 const { createUser, findUserByEmail, initializeDatabase } = require('../_db')
 
 module.exports = async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type')
+    res.setHeader('Vary', 'Origin')
+    return res.end()
+  }
+
   if (req.method !== 'POST') {
     return sendJson(res, 405, { message: 'Method not allowed' })
   }

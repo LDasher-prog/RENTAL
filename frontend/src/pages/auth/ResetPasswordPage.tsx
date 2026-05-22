@@ -1,8 +1,10 @@
+import { useState } from 'react'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
-import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { authService } from '../../services/authService'
 
 const resetSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -15,6 +17,9 @@ const resetSchema = z.object({
 type ResetForm = z.infer<typeof resetSchema>
 
 export const ResetPasswordPage = () => {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [successMessage, setSuccessMessage] = useState('')
   const {
     register,
     handleSubmit,
@@ -31,7 +36,28 @@ export const ResetPasswordPage = () => {
       })
       return
     }
-    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    const token = searchParams.get('token')
+    if (!token) {
+      setError('root', {
+        type: 'manual',
+        message: 'Reset token is missing. Please use the link from your email.',
+      })
+      return
+    }
+
+    setSuccessMessage('')
+
+    try {
+      await authService.resetPassword(token, values.password)
+      setSuccessMessage('Your password has been reset. Redirecting you to sign in...')
+      setTimeout(() => navigate('/auth/login'), 1200)
+    } catch (error) {
+      setError('root', {
+        type: 'server',
+        message: error instanceof Error ? error.message : 'Unable to reset password',
+      })
+    }
   }
 
   return (
@@ -49,6 +75,8 @@ export const ResetPasswordPage = () => {
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? 'Resetting...' : 'Reset password'}
           </Button>
+          {successMessage && <p className="text-sm text-emerald-400">{successMessage}</p>}
+          {errors.root?.message && <p className="text-sm text-rose-400">{errors.root.message}</p>}
         </form>
       </div>
 
